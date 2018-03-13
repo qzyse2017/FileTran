@@ -17,6 +17,7 @@ MKDIR = b'6'#
 CD = b'7'#
 GET = b'9'#
 PUT = b'C'#
+PAC_GET = b'K'
 
 
 #FOR RETURNED MSG
@@ -101,6 +102,7 @@ class transferFileClient():
 		self.client.sendall(send_msg)
 		rcv_msg = self.__read_as_bytearray()
 		dict_msg = message.decode_msg(rcv_msg)
+		print(dict_msg)
 		print('in the server , the current work directory is ' + dict_msg['server_current_dir_item'])
 
 
@@ -226,7 +228,18 @@ class transferFileClient():
 
 	def lcd(self,command):
 		cd_dir_name = command.split()[1]
+		cd_dir_name.strip()
 		global current_dir
+		trunc_pos = 0
+		if cd_dir_name == '..':
+			for idx in range(len(current_dir)):
+				if current_dir[-idx-1] == '\\':
+					trunc_pos = -idx-1
+					current_dir = current_dir[:trunc_pos]
+					break
+			print("Current Directory: " + current_dir)
+			return
+
 		find_flag = False
 		for file in os.listdir(current_dir):
 			if file == cd_dir_name:

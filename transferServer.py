@@ -19,6 +19,7 @@ MKDIR = b'6'#
 CD = b'7'#
 GET = b'9'#
 PUT = b'C'#
+PAC_GET = b'K'
 
 
 #FOR RETURNED MSG
@@ -133,6 +134,7 @@ while True:
 		elif status_code ==PWD :
 			send_message = message.encode_msg_str(CARRY_CUR_DIR,0,current_work_dir)
 			connection.sendall(send_message)
+			print(send_message)
 		
 		elif status_code ==MKDIR :
 			mkdir_name = dict_msg['mkdir_name']
@@ -141,6 +143,16 @@ while True:
 		
 		elif status_code == CD :
 			cd_dir = dict_msg['cd_dir']
+			if cd_dir == '..':
+				for idx in range(len(current_work_dir)):
+					if current_work_dir[-idx-1] == '\\':
+						trunc_pos = -idx-1
+						current_work_dir = current_work_dir[:trunc_pos]
+						send_msg = message.encode_msg_str(CD,0,cd_dir)
+						connection.sendall(send_msg)
+						break
+				continue
+
 			find = False
 			for file  in os.listdir(current_work_dir):
 				if file == cd_dir:

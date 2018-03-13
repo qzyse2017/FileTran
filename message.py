@@ -7,6 +7,7 @@ MKDIR = b'6'#
 CD = b'7'#
 GET = b'9'#
 PUT = b'C'#
+PAC_GET = b'K'
 
 
 #FOR RETURNED MSG
