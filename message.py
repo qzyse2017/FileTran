@@ -56,6 +56,9 @@ def decode_msg(rcv_msg):
 	if status_code == GET:
 		dict_msg['file_name_get'] = rcv_msg[5:].strip(b'\x00').decode('utf-8')
 
+	if status_code == PAC_GET:
+		dict_msg['file_name_get'] = rcv_msg[5:].strip(b'\x00').decode('utf-8')
+
 	elif status_code == GET_SIZE:
 		dict_msg['transfer_byte_length'] = int.from_bytes(rcv_msg[1:5],byteorder ='big')
 		dict_msg['get_file_size'] = int.from_bytes(rcv_msg[5:9],byteorder ='big')

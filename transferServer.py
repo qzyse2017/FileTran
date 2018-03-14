@@ -3,6 +3,7 @@ import os
 import sys
 import json
 import message
+import packDir
 
 
 std_msg_length = 4096
@@ -134,7 +135,6 @@ while True:
 		elif status_code ==PWD :
 			send_message = message.encode_msg_str(CARRY_CUR_DIR,0,current_work_dir)
 			connection.sendall(send_message)
-			print(send_message)
 		
 		elif status_code ==MKDIR :
 			mkdir_name = dict_msg['mkdir_name']
@@ -177,9 +177,12 @@ while True:
 				continue                    
 				
 			f = open(file_name_get,'rb')
+			#test_name = file_name_get + '.test' #test
+			#f_test = open(test_name,'wb')#test
 			info_length = 1+4+4
 			read_size = min(std_msg_length-info_length,file_size)
 			chunk = f.read(read_size)
+			#f_test.write(chunk)#test
 			file_size_array = bytearray(4)
 			file_size_array[:4] = file_size.to_bytes(4,byteorder = 'big')
 			file_size_array += chunk
@@ -188,14 +191,20 @@ while True:
 			connection.sendall(send_msg)
 
 			info_length = 1+4
+			print('file_size' + str(file_size))
 			while send_size < file_size:
 				read_size = min(std_msg_length-info_length,file_size-send_size)
 				chunk = f.read(read_size)  
 				send_msg = message.encode_msg_byte(ON_TRANSFER_GET,read_size,chunk)
+				#f_test.write(chunk)#test
 				connection.sendall(send_msg)
 				send_size += read_size
+				#print('read_size' + str(read_size))#test
+				#print('send_size' + str(send_size))#test
 
+			#print('transfer done')#test
 			f.close()
+			#f_test.close()#test
 			rcv_msg = read_as_bytearray(connection)
 			dict_msg = message.decode_msg(rcv_msg)
 			if dict_msg['status_code'] == ERR_INTERRUPT_GET:
@@ -243,6 +252,51 @@ while True:
 				connection.sendall(send_msg)
 				f.close()
 				continue
+
+		elif status_code == PAC_GET:
+			file_name_get = dict_msg['file_name_get']
+			file_path_get = current_work_dir + '\\' + file_name_get
+			file_size = 0
+			try:
+				file_size = os.path.getsize(file_path_get)
+			except OSError as e:
+				send_msg = message.encode_msg_str(NO_DIR_FILE,0,'')
+				connection.sendall(send_msg)
+				continue                    
+				
+			zipFile = packDir.zipDirectory(file_name_get,current_work_dir)
+			zipPath = current_work_dir + os.path.sep + zipFile
+			f = open(zipPath,'rb')
+			info_length = 1+4+4
+			file_size = os.path.getsize(zipPath)
+			#print('zipPath: '+ str(zipPath))#test
+			#print('file_size: ' + str(file_size))#test
+			read_size = min(std_msg_length-info_length,file_size)
+			chunk = f.read(read_size)
+			file_size_array = bytearray(4)
+			file_size_array[:4] = file_size.to_bytes(4,byteorder = 'big')
+			file_size_array += chunk
+			send_size = read_size
+			send_msg = message.encode_msg_byte(GET_SIZE,send_size,file_size_array)
+			connection.sendall(send_msg)
+
+			info_length = 1+4
+			while send_size < file_size:
+				read_size = min(std_msg_length-info_length,file_size-send_size)
+				chunk = f.read(read_size)  
+				send_msg = message.encode_msg_byte(ON_TRANSFER_GET,read_size,chunk)
+				connection.sendall(send_msg)
+				send_size += read_size
+
+			f.close()
+			os.remove(zipPath)
+			rcv_msg = read_as_bytearray(connection)
+			dict_msg = message.decode_msg(rcv_msg)
+			if dict_msg['status_code'] == ERR_INTERRUPT_GET:
+				print('File transfer error for file : ' + file_name_get + 'for user : ' + username)
+				continue
+
+
 
 		elif status_code == EXIT:
 			sys.exit(0)

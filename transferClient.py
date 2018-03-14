@@ -3,6 +3,7 @@ import socket
 import hashlib
 import os
 import message
+import packDir
 
 
 std_msg_length = 4096
@@ -102,7 +103,6 @@ class transferFileClient():
 		self.client.sendall(send_msg)
 		rcv_msg = self.__read_as_bytearray()
 		dict_msg = message.decode_msg(rcv_msg)
-		print(dict_msg)
 		print('in the server , the current work directory is ' + dict_msg['server_current_dir_item'])
 
 
@@ -158,6 +158,49 @@ class transferFileClient():
 		f = open(current_dir + '\\' + get_file_name,'wb')
 		f.write(dict_msg['file_byte'])
 		rcv_file_size = dict_msg['transfer_byte_length']
+		#print('file_size: ' + str(file_size))#test
+
+		while rcv_file_size < file_size:
+			rcv_msg = self.__read_as_bytearray()
+			dict_msg = message.decode_msg(rcv_msg)
+			status_code = dict_msg['status_code']
+			if status_code == ON_TRANSFER_GET:
+				transfer_byte_length = dict_msg['transfer_byte_length']
+				file_byte = rcv_msg[5:5+transfer_byte_length]
+				f.write(file_byte)
+				#print('rcv_file_size: ' + str(rcv_file_size))#test
+				rcv_file_size += transfer_byte_length
+			else:
+				break
+
+		send_msg = message.encode_msg_str(SUCC_GET,0,'')
+		self.client.sendall(send_msg)
+		f.close()
+
+	def pack_get(self,command):
+		arg_list = command.split()
+		pack_file_name = arg_list[1]
+		for file in os.listdir(current_dir):
+			if pack_file_name == file:
+				print("redundant file name ,eror")
+				return
+		send_msg = message.encode_msg_str(PAC_GET,0,pack_file_name)
+		self.client.sendall(send_msg)
+
+		rcv_msg = self.__read_as_bytearray()
+		dict_msg = message.decode_msg(rcv_msg)
+		print(rcv_msg)
+		status_code = dict_msg['status_code']
+		if status_code == NO_DIR_FILE:
+			print('no such dir or file')
+			return
+
+		file_size = dict_msg['get_file_size']
+		zipName = pack_file_name + '_tmp.zip'
+		f = open(current_dir + '\\' + zipName,'wb')
+		f.write(dict_msg['file_byte'])
+		rcv_file_size = dict_msg['transfer_byte_length']
+		#print('file_size: '+ str(file_size))#test
 
 
 		while rcv_file_size < file_size:
@@ -168,6 +211,7 @@ class transferFileClient():
 				transfer_byte_length = dict_msg['transfer_byte_length']
 				file_byte = rcv_msg[5:5+transfer_byte_length]
 				f.write(file_byte)
+				#print('rcv_file_size: '+ str(rcv_file_size))#test
 				rcv_file_size += transfer_byte_length
 			else:
 				break
@@ -175,6 +219,11 @@ class transferFileClient():
 		send_msg = message.encode_msg_str(SUCC_GET,0,'')
 		self.client.sendall(send_msg)
 		f.close()
+		packDir.unzipDirectory(current_dir,zipName)
+		#print('current_dir: ' + str(current_dir))#test
+		#print('zipName: ' + str(zipName))#test
+		os.remove(zipName)
+
 
 	def fput(self,command):
 		'''put file to server'''
