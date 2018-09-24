@@ -147,6 +147,9 @@ def __universal_encode_pack(status_code,msg_seq,byte_universal_content):
 	encoded_msg[5:] = byte_universal_content
 	return encoded_msg
 
+def main():
+    pack_login_msg()
+
 	
 
 
